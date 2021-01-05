@@ -95,9 +95,6 @@ class Lseg(tuple):
 	def parallel(self, ob):
 		return self.slope == type(self)(ob).slope
 
-	def intersect(self, ob):
-		raise NotImplementedError
-
 	def perpendicular(self, ob):
 		return (self.slope / type(self)(ob).slope) == -1.0
 
@@ -117,7 +114,7 @@ class Box(tuple):
 		postgresql.types.geometry.Box(((-2.0, 0.0), (-4.0, -3.0)))
 
 	::
-		
+
 		                (-2, 0) `high`
 		                   |
 		                   |
@@ -170,7 +167,7 @@ class Box(tuple):
 
 class Circle(tuple):
 	"""
-	type for PostgreSQL circles
+	Type for PostgreSQL circles.
 	"""
 	__slots__ = ()
 	center = property(fget = get0, doc = "center of the circle (point)")

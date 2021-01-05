@@ -100,7 +100,7 @@ p_new(PyTypeObject *subtype, PyObject *args, PyObject *kw)
 static char
 p_at_least(struct p_place *p, uint32_t amount)
 {
-	int32_t current = 0;
+	uint32_t current = 0;
 	struct p_list *pl;
 
 	pl = p->list;
@@ -624,6 +624,3 @@ PyTypeObject pq_message_stream_Type = {
 	p_new,								/* tp_new */
 	NULL,									/* tp_free */
 };
-/*
- * vim: ts=3:sw=3:noet:
- */

@@ -54,8 +54,8 @@ class test_dbapi20(unittest.TestCase):
 	"""
 	Test a database self.driver for DB API 2.0 compatibility.
 	This implementation tests Gadfly, but the TestCase
-	is structured so that other self.drivers can subclass this 
-	test case to ensure compiliance with the DB-API. It is 
+	is structured so that other self.drivers can subclass this
+	test case to ensure compiliance with the DB-API. It is
 	expected that this TestCase may be expanded in the future
 	if ambiguities or edge conditions are discovered.
 
@@ -65,9 +65,9 @@ class test_dbapi20(unittest.TestCase):
 	self.driver, connect_args and connect_kw_args. Class specification
 	should be as follows:
 
-	import dbapi20 
+	import dbapi20
 	class mytest(dbapi20.DatabaseAPI20Test):
-		[...] 
+		[...]
 
 	__rcs_id__  = 'Id: dbapi20.py,v 1.10 2003/10/09 03:14:14 zenzen Exp'
 	__version__ = 'Revision: 1.10'
@@ -93,27 +93,21 @@ class test_dbapi20(unittest.TestCase):
 	def executeDDL2(self,cursor):
 		cursor.execute(self.ddl2)
 
+	def setUp(self):
+		pg_tmp.init()
+		pg_tmp.push()
+		pg_tmp._init_c(db)
+
 	def tearDown(self):
-		con = self._connect()
-		try:
-			cur = con.cursor()
-			for ddl in (self.xddl1, self.xddl2):
-				try: 
-					cur.execute(ddl)
-					con.commit()
-				except self.driver.Error: 
-					# Assume table didn't exist. Other tests will check if
-					# execute is busted.
-					pass
-		finally:
-			con.close()
+		pg_tmp.pop(None)
 
 	def _connect(self):
-		pg_tmp.init()
-		host, port = pg_tmp.cluster.address()
-		return self.driver.connect(
-			user = 'test', host = host, port = port,
-		)
+		c = db.clone()
+		c.__class__ = self.driver.Connection
+		c._xact = c.xact()
+		c._xact.start()
+		c._dbapi_connected_flag = True
+		return c
 
 	def test_connect(self):
 		con = self._connect()
@@ -708,7 +702,7 @@ class test_dbapi20(unittest.TestCase):
 	def help_nextset_setUp(self,cur):
 		'''
 		Should create a procedure called deleteme
-		that returns two result sets, first the 
+		that returns two result sets, first the
 		number of rows in booze then "name from booze"
 		'''
 		cur.execute('select name from ' + self.booze_name)

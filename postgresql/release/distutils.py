@@ -19,11 +19,19 @@ except ImportError as e:
 	from distutils.core import Extension, Command
 
 LONG_DESCRIPTION = """
+.. warning::
+	In v1.3, `postgresql.driver.dbapi20.connect` will now raise `ClientCannotConnectError` directly.
+	Exception traps around connect should still function, but the `__context__` attribute
+	on the error instance will be `None` in the usual failure case as it is no longer
+	incorrectly chained. Trapping `ClientCannotConnectError` ahead of `Error` should
+	allow both cases to co-exist in the event that data is being extracted from
+	the `ClientCannotConnectError`.
+
 py-postgresql is a set of Python modules providing interfaces to various parts
-of PostgreSQL. Notably, it provides a pure-Python driver + C optimizations for
+of PostgreSQL. Primarily, it provides a pure-Python driver with some C optimizations for
 querying a PostgreSQL database.
 
-http://python.projects.postgresql.org
+http://github.com/python-postgres/fe
 
 Features:
 
@@ -56,14 +64,6 @@ Once installed, try out the ``pg_python`` console script::
 
 If a successful connection is made to the remote host, it will provide a Python
 console with the database connection bound to the `db` name.
-
-
-History
--------
-
-py-postgresql is not yet another PostgreSQL driver, it's been in development for
-years. py-postgresql is the Python 3 port of the ``pg_proboscis`` driver and
-integration of the other ``pg/python`` projects.
 """
 
 CLASSIFIERS = [
@@ -117,8 +117,8 @@ except NameError:
 	default_prefix = ['postgresql']
 
 def prefixed_extensions(
-	prefix : "prefix to prepend to paths" = default_prefix,
-	extensions_data : "`extensions_data`" = extensions_data,
+	prefix = default_prefix,
+	extensions_data = extensions_data,
 ) -> [Extension]:
 	"""
 	Generator producing the `distutils` `Extension` objects.
@@ -134,7 +134,7 @@ def prefixed_extensions(
 		)
 
 def prefixed_packages(
-	prefix : "prefix to prepend to source paths" = default_prefix,
+	prefix = default_prefix,
 	packages = subpackages,
 ):
 	"""
@@ -147,7 +147,7 @@ def prefixed_packages(
 		yield prefix + pkg
 
 def prefixed_package_data(
-	prefix : "prefix to prepend to dictionary keys paths" = default_prefix,
+	prefix = default_prefix,
 	package_data = subpackage_data,
 ):
 	"""
@@ -167,15 +167,17 @@ def standard_setup_keywords(build_extensions = True, prefix = default_prefix):
 		'version' : version,
 		'description' : 'PostgreSQL driver and tools library.',
 		'long_description' : LONG_DESCRIPTION,
+		'long_description_content_type' : 'text/x-rst',
 		'author' : 'James William Pye',
-		'author_email' : 'x@jwp.name',
+		'author_email' : 'james.pye@gmail.com',
 		'maintainer' : 'James William Pye',
-		'maintainer_email' : 'python-general@pgfoundry.org',
+		'maintainer_email' : 'james.pye@gmail.com',
 		'url' : url,
 		'classifiers' : CLASSIFIERS,
 		'packages' : list(prefixed_packages(prefix = prefix)),
 		'package_data' : dict(prefixed_package_data(prefix = prefix)),
 		'cmdclass': dict(test=TestCommand),
+		'python_requires': '>=3.3',
 	}
 	if build_extensions:
 		d['ext_modules'] = list(prefixed_extensions(prefix = prefix))

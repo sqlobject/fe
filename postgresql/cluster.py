@@ -40,23 +40,35 @@ class ClusterError(pg_exc.Error):
 	code = '-C000'
 	source = 'CLUSTER'
 class ClusterInitializationError(ClusterError):
-	"General cluster initialization failure"
+	"""
+	General cluster initialization failure.
+	"""
 	code = '-Cini'
 class InitDBError(ClusterInitializationError):
-	"A non-zero result was returned by the initdb command"
+	"""
+	A non-zero result was returned by the initdb command.
+	"""
 	code = '-Cidb'
 class ClusterStartupError(ClusterError):
-	"Cluster startup failed"
+	"""
+	Cluster startup failed.
+	"""
 	code = '-Cbot'
 class ClusterNotRunningError(ClusterError):
-	"Cluster is not running"
+	"""
+	Cluster is not running.
+	"""
 	code = '-Cdwn'
 class ClusterTimeoutError(ClusterError):
-	"Cluster operation timed out"
+	"""
+	Cluster operation timed out.
+	"""
 	code = '-Cout'
 
 class ClusterWarning(pg_exc.Warning):
-	"Warning issued by cluster operations"
+	"""
+	Warning issued by cluster operations.
+	"""
 	code = '-Cwrn'
 	source = 'CLUSTER'
 
@@ -154,10 +166,7 @@ class Cluster(pg_api.Cluster):
 			join(self.data_directory, self.DEFAULT_HBA_FILENAME)
 		)
 
-	def __init__(self,
-		installation : "installation object",
-		data_directory : "path to the data directory",
-	):
+	def __init__(self, installation, data_directory):
 		self.installation = installation
 		self.data_directory = os.path.abspath(data_directory)
 		self.pgsql_dot_conf = os.path.join(
@@ -190,12 +199,7 @@ class Cluster(pg_api.Cluster):
 		self.stop()
 		self.wait_until_stopped()
 
-	def init(self,
-		password : \
-			"Password to assign to the " \
-			"cluster's superuser(`user` keyword)." = None,
-		**kw
-	):
+	def init(self, password = None, timeout = None, **kw):
 		"""
 		Create the cluster at the given `data_directory` using the
 		provided keyword parameters as options to the command.
@@ -255,29 +259,24 @@ class Cluster(pg_api.Cluster):
 				cmd,
 				close_fds = close_fds,
 				bufsize = 1024 * 5, # not expecting this to ever be filled.
-				stdin = sp.PIPE,
+				stdin = None,
 				stdout = logfile,
 				# stderr is used to identify a reasonable error message.
 				stderr = sp.PIPE,
 			)
-			# stdin is not used; it is not desirable for initdb to be attached.
-			p.stdin.close()
 
-			while True:
-				try:
-					rc = p.wait()
-					break
-				except OSError as e:
-					if e.errno != errno.EINTR:
-						raise
-				finally:
-					if p.stdout is not None:
-						p.stdout.close()
+			try:
+				stdout, stderr = p.communicate(timeout=timeout)
+			except sp.TimeoutExpired:
+				p.kill()
+				stdout, stderr = p.communicate()
+			finally:
+				rc = p.returncode
 
 			if rc != 0:
 				# initdb returned non-zero, pickup stderr and attach to exception.
 
-				r = p.stderr.read().strip()
+				r = stderr
 				try:
 					msg = r.decode('utf-8')
 				except UnicodeDecodeError:
@@ -285,6 +284,7 @@ class Cluster(pg_api.Cluster):
 					msg = os.linesep.join([
 						repr(x)[2:-1] for x in r.splitlines()
 					])
+
 				raise InitDBError(
 					"initdb exited with non-zero status",
 					details = {
@@ -295,11 +295,6 @@ class Cluster(pg_api.Cluster):
 					creator = self
 				)
 		finally:
-			if p is not None:
-				for x in (p.stderr, p.stdin, p.stdout):
-					if x is not None:
-						x.close()
-
 			if supw_tmp is not None:
 				n = supw_tmp.name
 				supw_tmp.close()
@@ -333,10 +328,7 @@ class Cluster(pg_api.Cluster):
 				os.rmdir(os.path.join(root, name))	
 		os.rmdir(self.data_directory)
 
-	def start(self,
-		logfile : "Where to send stderr" = None,
-		settings : "Mapping of runtime parameters" = None
-	):
+	def start(self, logfile = None, settings = None):
 		"""
 		Start the cluster.
 		"""
@@ -572,10 +564,7 @@ class Cluster(pg_api.Cluster):
 		# credentials... strange, but true..
 		return e if e is not None else True
 
-	def wait_until_started(self,
-		timeout : "how long to wait before throwing a timeout exception" = 10,
-		delay : "how long to sleep before re-testing" = 0.05,
-	):
+	def wait_until_started(self, timeout = 10, delay = 0.05):
 		"""
 		After the `start` method is used, this can be ran in order to block
 		until the cluster is ready for use.
@@ -624,10 +613,7 @@ class Cluster(pg_api.Cluster):
 				raise e
 			time.sleep(delay)
 
-	def wait_until_stopped(self,
-		timeout : "how long to wait before throwing a timeout exception" = 10,
-		delay : "how long to sleep before re-testing" = 0.05
-	):
+	def wait_until_stopped(self, timeout = 10, delay = 0.05):
 		"""
 		After the `stop` method is used, this can be ran in order to block until
 		the cluster is shutdown.
@@ -649,5 +635,3 @@ class Cluster(pg_api.Cluster):
 					creator = self,
 				)
 			time.sleep(delay)
-##
-# vim: ts=3:sw=3:noet:

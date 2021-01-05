@@ -324,6 +324,10 @@ class Connection(Connection):
 	DatabaseError = DatabaseError
 	NotSupportedError = NotSupportedError
 
+	# Explicitly manage DB-API connected state to properly
+	# throw the already closed error.
+	_dbapi_connected_flag = False
+
 	def autocommit_set(self, val):
 		if val:
 			# already in autocommit mode.
@@ -354,14 +358,16 @@ class Connection(Connection):
 		super().connect(*args, **kw)
 		self._xact = self.xact()
 		self._xact.start()
+		self._dbapi_connected_flag = True
 
 	def close(self):
-		if self.closed:
+		if self.closed and self._dbapi_connected_flag:
 			raise Error(
 				"connection already closed",
 				source = 'CLIENT',
 				creator = self
 			)
+		self._dbapi_connected_flag = True
 		super().close()
 
 	def cursor(self):
@@ -399,6 +405,9 @@ driver = pg_driver.Driver(connection = Connection)
 def connect(**kw):
 	"""
 	Create a DB-API connection using the given parameters.
+
+	Due to the way defaults are populated, when connecting to a local filesystem socket
+	using the `unix` keyword parameter, `host` and `port` must also be set to ``None``.
 	"""
 	std_params = pg_param.collect(prompt_title = None)
 	params = pg_param.normalize(

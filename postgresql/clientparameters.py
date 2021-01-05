@@ -20,7 +20,7 @@ the key is always a tuple whose components make up the "key-path". This is used
 to support sub-dictionaries like settings::
 
 	>>> normal_params = {
-	 'user' : 'jwp',
+	 'user' : 'dbusername',
 	 'host' : 'localhost',
 	 'settings' : {'default_statistics_target' : 200, 'search_path' : 'home,public'}
 	}
@@ -162,7 +162,7 @@ def defaults(environ = os.environ):
 		if v and os.path.exists(v):
 			yield (k,), v
 
-def envvars(environ = os.environ, modifier : "environment variable key modifier" = 'PG'.__add__):
+def envvars(environ = os.environ, modifier = 'PG'.__add__):
 	"""
 	Create a clientparams dictionary from the given environment variables.
 
@@ -190,6 +190,8 @@ def envvars(environ = os.environ, modifier : "environment variable key modifier"
 	The 'PG' prefix can be customized via the `modifier` argument. However,
 	PGSYSCONFDIR will not respect any such change as it's not a client parameter
 	itself.
+
+	:param modifier: environment variable key modifier
 	"""
 	hostaddr = modifier('HOSTADDR')
 	reqssl = modifier('REQUIRESSL')
@@ -282,7 +284,9 @@ option_unix = make_option('--unix',
 )
 
 def append_settings(option, opt_str, value, parser):
-	'split the string into a (key,value) pair tuple'
+	"""
+	split the string into a (key,value) pair tuple
+	"""
 	kv = value.split('=', 1)
 	if len(kv) != 2:
 		raise OptionValueError("invalid setting argument, %r" %(value,))
@@ -375,11 +379,7 @@ class DefaultParser(StandardParser):
 	"""
 	standard_option_list = default_optparse_options
 
-def resolve_password(
-	parameters : "a fully normalized set of client parameters(dict)",
-	getpass = getpass,
-	prompt_title = '',
-):
+def resolve_password(parameters, getpass = getpass, prompt_title = ''):
 	"""
 	Given a parameters dictionary, resolve the 'password' key.
 
@@ -394,6 +394,8 @@ def resolve_password(
 
 	Finally, remove the pgpassfile key as the password has been resolved for the
 	given parameters.
+
+	:param parameters: a fully normalized set of client parameters(dict)
 	"""
 	prompt_for_password = parameters.pop('prompt_password', False)
 	pgpassfile = parameters.pop('pgpassfile', None)
@@ -511,7 +513,7 @@ def x_pg_service(service_name, config):
 		)
 
 def x_pg_ldap(ldap_url, config):
-	raise NotImplementedError("cannot resolve ldap URLs: " + str(ldap_url))
+	raise Exception("cannot resolve ldap URLs")
 
 default_x_callbacks = {
 	'settings' : x_settings,
@@ -578,7 +580,7 @@ def normalize(iter):
 def resolve_pg_service_file(
 	environ = os.environ,
 	default_pg_sysconfdir = None,
-	default_pg_service_filename = pg_service_filename 
+	default_pg_service_filename = pg_service_filename
 ):
 	sysconfdir = environ.get(pg_sysconfdir_envvar, default_pg_sysconfdir)
 	if sysconfdir:
@@ -586,18 +588,27 @@ def resolve_pg_service_file(
 	return None
 
 def collect(
-	parsed_options : "options parsed using the `DefaultParser`" = None,
-	no_defaults : "Don't build-out defaults like 'user' from getpass.getuser()" = False,
-	environ : "environment variables to use, `None` to disable" = os.environ,
-	environ_prefix : "prefix to use for collecting environment variables" = 'PG',
-	default_pg_sysconfdir : "default 'PGSYSCONFDIR' to use" = None,
-	pg_service_file : "the pg-service file to actually use" = None,
-	prompt_title : "additional title to use if a prompt request is made" = '',
-	parameters : "base-client parameters to use(applied after defaults)" = (),
+	parsed_options = None,
+	no_defaults = False,
+	environ = os.environ,
+	environ_prefix = 'PG',
+	default_pg_sysconfdir = None,
+	pg_service_file = None,
+	prompt_title = '',
+	parameters = (),
 ):
 	"""
 	Build a normalized client parameters dictionary for use with a connection
 	construction interface.
+
+	:param parsed_options: options parsed using the `DefaultParser`
+	:param no_defaults: Don't build-out defaults like 'user' from getpass.getuser()
+	:param environ: environment variables to use, `None` to disable
+	:param environ_prefix: prefix to use for collecting environment variables
+	:param default_pg_sysconfdir: default 'PGSYSCONFDIR' to use
+	:param pg_service_file: the pg-service file to actually use
+	:param prompt_title: additional title to use if a prompt request is made
+	:param parameters: base-client parameters to use(applied after defaults)
 	"""
 	d_parameters = []
 	d_parameters.append([('config-environ', environ)])

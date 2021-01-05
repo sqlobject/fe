@@ -14,12 +14,11 @@ Contents
 
    admin
    driver
-   copyman
+   clientparameters
+   cluster
    notifyman
    alock
-   cluster
-   lib
-   clientparameters
+   copyman
    gotchas
 
 Reference
@@ -37,6 +36,7 @@ Changes
 .. toctree::
    :maxdepth: 1
 
+   changes-v1.3
    changes-v1.2
    changes-v1.1
    changes-v1.0
